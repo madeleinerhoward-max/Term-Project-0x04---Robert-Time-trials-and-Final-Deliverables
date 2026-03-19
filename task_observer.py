@@ -1,4 +1,4 @@
-# task_observer.py -- Discrete Luenberger Observer for Romi (Lab 0x06)
+
 
 import micropython
 import math
@@ -32,11 +32,9 @@ Bd_aug = [
     [-3.18117009e-06, 3.18117009e-06, -9.26301995e-03,  9.26301995e-03,  1.31390354e-01,  1.74874856e-03],
 ]
 
-# Meters per encoder count: 2*pi*r / (CPR * gear_ratio)
-_METERS_PER_COUNT = -(2.0 * math.pi * 0.035) / (12 * 120)   # ~1.527e-4 m/count
 
-# Task sample period -- must match period= in main.py Task() call
-_Ts = 0.020   # seconds
+_METERS_PER_COUNT = -(2.0 * math.pi * 0.035) / (12 * 120)  
+_Ts = 0.020  
 
 
 class task_observer:
@@ -97,7 +95,7 @@ class task_observer:
                 self._state = S1_RUN
 
             elif self._state == S1_RUN:
-                # Encoder velocities in m/s
+                
                 vL_enc, vR_enc = self._get_encoder_vel_ms()
 
                 phi_meas = float(self._phi.get())
@@ -105,10 +103,10 @@ class task_observer:
                 uL = float(self._uL.get())
                 uR = float(self._uR.get())
 
-                # Augmented input: [u_L, u_R, vL_measured, vR_measured, phi, psi]
+              
                 u_aug = np.array([uL, uR, vL_enc, vR_enc, phi_meas, psi_meas])
 
-                # Discrete observer update
+                
                 self._x = (np.dot(self._Ad, self._x) +
                            np.dot(self._Bd_aug, u_aug))
 
@@ -117,17 +115,18 @@ class task_observer:
                 s_hat   = float(self._x[2])
                 psi_hat = float(self._x[3])
 
-                # Position integration using measured encoder velocity
+                
                 spd_meas = (vL_enc + vR_enc) / 2.0
                 self._x_pos += math.cos(phi_meas) * spd_meas * _Ts
                 self._y_pos += math.sin(phi_meas) * spd_meas * _Ts
 
-                # Publish estimated states
+               
                 self._vL.put(vL_hat)
                 self._vR.put(vR_hat)
                 self._spd.put(s_hat)
                 self._yaw.put(psi_hat)
                 self._xpos.put(self._x_pos)
                 self._ypos.put(self._y_pos)
+
 
             yield self._state
