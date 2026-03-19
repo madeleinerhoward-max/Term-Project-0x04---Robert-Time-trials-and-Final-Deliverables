@@ -1,10 +1,7 @@
-# bno055.py -- MicroPython driver for BNO055 (pyb.I2C)
-# FIXED: drives reset pin HIGH immediately so IMU is not held in reset.
 
 from pyb import Pin
 import time
 
-# Registers (page 0)
 _CHIP_ID = 0x00
 _OPR_MODE = 0x3D
 _EULER_H_LSB = 0x1A
@@ -13,7 +10,7 @@ _CALIB_STAT = 0x35
 _CALIB_START = 0x55
 _CALIB_LENGTH = 22
 
-# Operation modes
+
 OPR_MODE_CONFIG = 0x00
 OPR_MODE_IMU = 0x08
 OPR_MODE_NDOF = 0x0C
@@ -26,18 +23,15 @@ class BNO055:
         self.reset_pin = None
         if reset_pin:
             self.reset_pin = reset_pin if isinstance(reset_pin, Pin) else Pin(reset_pin, Pin.OUT_PP)
-
-            # CRITICAL: make sure reset is NOT asserted
             self.reset_pin.high()
             time.sleep_ms(10)
 
             if do_reset:
                 self.reset()
         else:
-            # If no reset pin, still give sensor time after power-up
+          
             time.sleep_ms(700)
-
-    # ---------- low-level ----------
+            
     def _mem_read(self, nbytes, reg):
         return self.i2c.mem_read(nbytes, self.addr, reg)
 
@@ -51,16 +45,15 @@ class BNO055:
         self.reset_pin.low()
         time.sleep_ms(50)
         self.reset_pin.high()
-        # BNO055 boot time; be generous
+      
         time.sleep_ms(700)
 
-    # ---------- id ----------
+   
     def read_chip_id(self):
         return self._mem_read(1, _CHIP_ID)[0]
 
-    # ---------- mode ----------
+    
     def set_mode(self, mode):
-        # Sometimes first write after boot can fail; retry once
         try:
             self._mem_write(mode, _OPR_MODE)
         except OSError:
@@ -71,7 +64,6 @@ class BNO055:
     def get_mode(self):
         return self._mem_read(1, _OPR_MODE)[0]
 
-    # ---------- calibration ----------
     def read_cal_status(self):
         return self._mem_read(1, _CALIB_STAT)[0]
 
@@ -93,7 +85,6 @@ class BNO055:
         self._mem_write(cur_mode, _OPR_MODE)
         time.sleep_ms(50)
 
-    # ---------- readings ----------
     def _s16(self, lo, hi):
         v = lo | (hi << 8)
         return v - 65536 if v & 0x8000 else v
@@ -117,4 +108,5 @@ class BNO055:
         return self.read_euler()[0]
 
     def read_yaw_rate(self):
+
         return self.read_gyro()[2]
