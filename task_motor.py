@@ -21,7 +21,7 @@ class task_motor:
         self._Ki = Ki_share
         self._SP = SP_share
         self._vel_sign = float(vel_sign)
-        self._effort_share = effort_share  # Share to publish current effort (%)
+        self._effort_share = effort_share
 
         self._startTime = 0
         self._lastTime  = 0
@@ -78,7 +78,7 @@ class task_motor:
 
                 self._mot.set_effort(effort)
 
-                # Publish effort so observer knows what was commanded
+               
                 if self._effort_share is not None:
                     self._effort_share.put(float(effort))
 
@@ -89,5 +89,6 @@ class task_motor:
                     self._mot.set_effort(0)
                     self._goFlag.put(False)
                     self._state = S1_WAIT
+
 
             yield self._state
