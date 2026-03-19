@@ -1,18 +1,9 @@
-# line_sensor.py
-# Generic reflectance line sensor array driver (QTRX analog outputs)
-# No f-strings for MicroPython compatibility.
+
 
 from pyb import ADC, Pin
 from utime import sleep_ms
 
 class LineSensorArray:
-    """
-    Generic analog line sensor array driver.
-
-    pins: tuple/list of Pin objects or pin names
-    oversample: ADC samples averaged per channel
-    weights: optional weights for centroid; default symmetric centered at 0
-    """
 
     def __init__(self, pins, oversample=6, weights=None):
         self.n = len(pins)
@@ -28,7 +19,6 @@ class LineSensorArray:
                 pinobj = Pin(p)
             self._adcs.append(ADC(pinobj))
 
-        # Calibration ranges (observed min/max)
         self._min = [4095] * self.n
         self._max = [0] * self.n
 
@@ -50,7 +40,6 @@ class LineSensorArray:
         return vals
 
     def calibrate_min(self, samples=200, delay_ms=2):
-        # Put sensors over WHITE for typical reflectance use
         if samples < 1:
             samples = 1
         for _ in range(samples):
@@ -61,7 +50,6 @@ class LineSensorArray:
             sleep_ms(delay_ms)
 
     def calibrate_max(self, samples=200, delay_ms=2):
-        # Put sensors over BLACK line for typical reflectance use
         if samples < 1:
             samples = 1
         for _ in range(samples):
@@ -101,11 +89,6 @@ class LineSensorArray:
         return out
 
     def centroid(self):
-        """
-        Returns (pos, strength)
-          pos: negative=left, positive=right, around 0 when centered
-          strength: sum of normalized values
-        """
         vals = self.normalized()
         s = 0.0
         wsum = 0.0
@@ -125,4 +108,5 @@ class LineSensorArray:
         return (pos, wsum)
 
     def get_calibration(self):
+
         return (list(self._min), list(self._max))
