@@ -147,9 +147,8 @@ START_VEL      = 200.0
 
 GARAGE_HANDOFF_MM = 1480
 
-# Post-garage curvy section -- slow and precise
-CURVY_VEL = 120.0   # slow for squiggly line
-CURVY_KP  = 250.0   # enough gain to track curves
+CURVY_VEL = 120.0   
+CURVY_KP  = 250.0  
 
 # ============================================================
 # COURSE CONSTANTS
@@ -157,25 +156,15 @@ CURVY_KP  = 250.0   # enough gain to track curves
 GARAGE_DRIVE_EFFORT  = 25
 GARAGE_TURN_EFFORT   = 18
 GARAGE_DRIVE_BIAS    = 2
-
-# CP0->CP1 straight: 1375mm = 9003 counts
 CP0_TO_CP1_COUNTS = 9100
-
-# 200mm quarter circle arc -- average distance traveled
-# Theoretical = 2057 counts, tune up/down as needed
 ARC_LEFT_COUNTS  = 2057
-ARC_RIGHT_COUNTS = 2057  # unused now, kept for reference
-
-# Hardcoded garage entry after arc
-GAR_ALIGN_COUNTS = 0   # left motor only spin to align -- tune this
-GAR_ENTRY_FWD_MM = 75   # forward into garage before left turn
-
-# Hardcoded exit sequence after bump
+ARC_RIGHT_COUNTS = 2057
+GAR_ALIGN_COUNTS = 0   
+GAR_ENTRY_FWD_MM = 75   
 EXIT_BACK_MM     = 10
 EXIT_FWD_MM      = 350
-EXIT_TURN_COUNTS = 726   # 90 deg point turn
-GAR_ENTRY_TURN_COUNTS = 605  # 75 deg point turn (726 * 75/90)
-
+EXIT_TURN_COUNTS = 726 
+GAR_ENTRY_TURN_COUNTS = 605 
 CUP_BACKUP_MM = 50
 CUP_SIDE_MM   = 150
 CUP_EFFORT    = 25
@@ -230,7 +219,7 @@ def task_line_follow():
     ph1_start_dist      = -1.0
 
     while True:
-        # --- calibration ---
+        
         cmd = int(cal_cmd.get())
         if cmd == 3:
             cal_cmd.put(0)
@@ -245,7 +234,7 @@ def task_line_follow():
                 print("Calibration saved.")
             except: print("Save failed")
 
-        # --- disabled ---
+     
         if not lf_enable.get():
             outer_i=0.0; outer_prev=0.0; pos_f=0.0
             dv_prev=0.0; base_cmd=0.0; was_enabled=False
@@ -253,7 +242,7 @@ def task_line_follow():
             set_motors(0, 0)
             yield 0; continue
 
-        # --- enable edge ---
+        
         if not was_enabled:
             was_enabled = True
             leftMotor.enable(); rightMotor.enable()
@@ -267,7 +256,6 @@ def task_line_follow():
 
         leftMotorGo.put(False); rightMotorGo.put(False)
 
-        # --- bumper check ---
         if any_bumper():
             bumper_armed.put(False)
             phase = int(course_phase.get())
@@ -292,7 +280,7 @@ def task_line_follow():
         ph_thresh = 0.35 if int(course_phase.get()) in (1, 2) else STRENGTH_MIN
         totally_lost = (strength is None) or (strength < ph_thresh)
 
-        # --- CP1 handoff (phase 0 only): encoder ticks say we're at CP1 ---
+       
         if int(course_phase.get()) == 0 and avg_counts >= CP0_TO_CP1_COUNTS:
             print("LF: CP1 reached at {:.0f} counts -> garage sequence".format(avg_counts))
             set_motors(0, 0)
@@ -301,7 +289,7 @@ def task_line_follow():
             garage_enable.put(True)
             yield 0; continue
 
-        # --- speed selection ---
+       
         ph = int(course_phase.get())
         if ph >= 1:
             BASE_VEL = CURVY_VEL
@@ -312,29 +300,27 @@ def task_line_follow():
         else:
             BASE_VEL = BASE_VEL_SLOW
 
-        # --- Phase 1: follow line, detect intersection, then pivot right to find curvy line ---
+    
         if ph == 1:
             if strength is not None and strength > 3.5:
                 if not past_intersection:
                     past_intersection = True
                     print("LF ph1: intersection! disabling lost-line spin")
             if past_intersection and totally_lost:
-                # Line ended after intersection -- slow right pivot to find curvy line
-                set_motors(8, -8)  # pure pivot right
+                set_motors(8, -8) 
                 yield 0; continue
             if past_intersection and not totally_lost:
-                # Found the curvy line -- switch to phase 2 and follow it
                 print("LF ph1: curvy line found str={:.2f} -> phase 2".format(
                     strength if strength is not None else 0.0))
                 course_phase.put(2)
 
-        # --- line follow control ---
+      
         line_lost = (pos is None) or (strength is None) or (strength < ph_thresh)
         if line_lost:
             if ph >= 2:
-                pos = last_dir * 0.5  # curvy: gentle steer toward last known line
+                pos = last_dir * 0.5
             elif ph >= 1:
-                pos = 0.0       # phase 1: go straight
+                pos = 0.0    
             elif dist_mm >= FAST_DIST_MM:
                 pos = 0.0
             else:
@@ -443,27 +429,21 @@ def task_course():
             else:
                 print("[COURSE] Garage entry")
                 state = _S_ARC
-
-        # ---- 200mm quarter circle arc into garage -- curve RIGHT ----
-        # Left (outer) faster, right (inner) slower to curve right
-        # Average traveled distance = 2057 counts. Tune ARC_LEFT_COUNTS.
         elif state == _S_ARC:
             if traveled(startL, startR) >= ARC_LEFT_COUNTS:
                 set_motors(0,0); startL,startR = snap()
                 print("[COURSE] Arc done -> align")
                 state = _S_GAR_ALIGN
             else:
-                set_motors(10, GARAGE_TURN_EFFORT)  # left faster, right slower = curve right
+                set_motors(10, GARAGE_TURN_EFFORT)  
 
-        # ---- Align: left motor only to get parallel with garage ----
         elif state == _S_GAR_ALIGN:
             if traveled(startL, startR) >= GAR_ALIGN_COUNTS:
                 set_motors(0,0); startL,startR = snap()
                 print("[COURSE] Align done -> forward {}mm".format(GAR_ENTRY_FWD_MM))
                 state = _S_GAR_FWD
-            else: set_motors(0, GARAGE_TURN_EFFORT)  # right motor only
+            else: set_motors(0, GARAGE_TURN_EFFORT) 
 
-        # ---- Forward into garage ----
         elif state == _S_GAR_FWD:
             if traveled(startL, startR) >= _mm_to_counts(GAR_ENTRY_FWD_MM):
                 set_motors(0,0); startL,startR = snap()
@@ -471,7 +451,7 @@ def task_course():
                 state = _S_GAR_TURN_L
             else: fwd(GARAGE_DRIVE_EFFORT, bias=0)
 
-        # ---- Left 90 turn to face wall ----
+  
         elif state == _S_GAR_TURN_L:
             if traveled(startL, startR) >= GAR_ENTRY_TURN_COUNTS:
                 set_motors(0,0); startL,startR = snap()
@@ -479,7 +459,7 @@ def task_course():
                 state = _S_GAR_DRIVE
             else: set_motors(GARAGE_TURN_EFFORT, -GARAGE_TURN_EFFORT)
 
-        # ---- Drive to wall ----
+        
         elif state == _S_GAR_DRIVE:
             bumper_armed.put(True)
             if any_bumper():
@@ -488,7 +468,6 @@ def task_course():
                 state = _S_EXIT_BACK
             else: fwd(GARAGE_DRIVE_EFFORT)
 
-        # ---- Hardcoded exit sequence ----
         elif state == _S_EXIT_BACK:
             if traveled(startL, startR) >= _mm_to_counts(EXIT_BACK_MM):
                 set_motors(0,0); startL,startR = snap()
@@ -629,4 +608,5 @@ while True:
         lf_enable.put(False); garage_enable.put(False)
         set_motors(0,0); leftMotor.disable(); rightMotor.disable()
         print("Stopped.")
+
         break
