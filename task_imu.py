@@ -1,4 +1,4 @@
-# task_imu.py -- IMU task for Lab 0x06
+
 
 import micropython
 import math
@@ -17,7 +17,7 @@ class task_imu:
 
         self._theta = 0.0
         self._prev_theta_wrap = None
-        self._heading_offset = 0.0   # subtracted from all heading readings
+        self._heading_offset = 0.0  
 
     @staticmethod
     def _wrap_to_pi(x):
@@ -35,7 +35,7 @@ class task_imu:
 
                 theta_wrap = (h_deg * math.pi) / 180.0
 
-                # Record startup heading as offset so we always begin at 0
+               
                 self._heading_offset = theta_wrap
                 self._theta = 0.0
                 self._prev_theta_wrap = theta_wrap
@@ -65,5 +65,6 @@ class task_imu:
                 self.heading_share.put(heading_zeroed)
                 self.yawrate_share.put((gz_dps * math.pi) / 180.0)
                 self.cal_share.put(cal)
+
 
             yield self._state
