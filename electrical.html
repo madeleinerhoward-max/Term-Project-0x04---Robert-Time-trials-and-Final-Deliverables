@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+
+<html lang="Python" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Electrical Design &#8212; Term Project - 0x04: Robert Time Trials and Final Deliverables 03/20/26 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=1480bb4b"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Calibration and Testing Procedure" href="calandtest.html" />
+    <link rel="prev" title="Mechanical Design" href="mechanical.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="electrical-design">
+<h1>Electrical Design<a class="headerlink" href="#electrical-design" title="Link to this heading">¶</a></h1>
+<p>The electrical design of Robert is centered around the Nucleo L476RG microcontroller, which interfaces with the motors, encoders, line sensor, bumper sensors, and supporting hardware. The robot uses two DC motors for differential drive, each controlled independently through PWM and direction signals. This configuration allows Robert to adjust left and right wheel speeds separately for both line-following and hard-coded driving maneuvers.</p>
+<p>Each motor uses three control pins:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">PWM</span></code> – controls motor effort through pulse-width modulation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DIR</span></code> – controls motor direction</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">nSLP</span></code> – enables or disables the motor driver</p></li>
+</ul>
+<p>The left and right motors are initialized separately in software, and both are connected to the same PWM timer operating at 20 kHz. Each motor is then enabled and controlled independently through separate timer channels.</p>
+<p>The wheel encoders provide position and speed feedback for both motors. Each encoder uses two pins:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Channel</span> <span class="pre">A</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Channel</span> <span class="pre">B</span></code></p></li>
+</ul>
+<p>These quadrature encoder signals are used for closed-loop motor control, checkpoint detection, and distance-based movement during hard-coded sequences such as the garage and cup tasks.</p>
+<p>The line-following system uses a 5-channel analog Pololu QTR reflectance sensor. The sensor is connected to five analog-capable input pins on the microcontroller and is read through the <code class="docutils literal notranslate"><span class="pre">LineSensorArray</span></code> class in software. These five sensor channels are used to estimate the line centroid and generate the steering correction used during line following.</p>
+<p>The bumper sensing system is implemented using a 3-pin bump sensor board. The three bumper inputs are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">BMP0</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BMP1</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BMP2</span></code></p></li>
+</ul>
+<p>These inputs are configured as digital inputs with pull-up resistors enabled. The bumper sensors are primarily used during the garage and cup sequences, where physical contact or trigger conditions are needed to transition between states.</p>
+<section id="wiring-overview">
+<h2>Wiring Overview<a class="headerlink" href="#wiring-overview" title="Link to this heading">¶</a></h2>
+<p>The hardware used in the final implementation is summarized below.</p>
+<section id="motor-driver-connections">
+<h3>Motor Driver Connections<a class="headerlink" href="#motor-driver-connections" title="Link to this heading">¶</a></h3>
+<p>Left motor:
+- <code class="docutils literal notranslate"><span class="pre">PWM</span></code> → <code class="docutils literal notranslate"><span class="pre">Pin.cpu.A6</span></code>
+- <code class="docutils literal notranslate"><span class="pre">DIR</span></code> → <code class="docutils literal notranslate"><span class="pre">Pin.cpu.B5</span></code>
+- <code class="docutils literal notranslate"><span class="pre">nSLP</span></code> → <code class="docutils literal notranslate"><span class="pre">Pin.cpu.B6</span></code></p>
+<p>Right motor:
+- <code class="docutils literal notranslate"><span class="pre">PWM</span></code> → <code class="docutils literal notranslate"><span class="pre">Pin.cpu.A7</span></code>
+- <code class="docutils literal notranslate"><span class="pre">DIR</span></code> → <code class="docutils literal notranslate"><span class="pre">Pin.cpu.B3</span></code>
+- <code class="docutils literal notranslate"><span class="pre">nSLP</span></code> → <code class="docutils literal notranslate"><span class="pre">Pin.cpu.B4</span></code></p>
+</section>
+<section id="encoder-connections">
+<h3>Encoder Connections<a class="headerlink" href="#encoder-connections" title="Link to this heading">¶</a></h3>
+<p>Left encoder:
+- <code class="docutils literal notranslate"><span class="pre">Channel</span> <span class="pre">A</span></code> → <code class="docutils literal notranslate"><span class="pre">Pin.cpu.A1</span></code>
+- <code class="docutils literal notranslate"><span class="pre">Channel</span> <span class="pre">B</span></code> → <code class="docutils literal notranslate"><span class="pre">Pin.cpu.A0</span></code></p>
+<p>Right encoder:
+- <code class="docutils literal notranslate"><span class="pre">Channel</span> <span class="pre">A</span></code> → <code class="docutils literal notranslate"><span class="pre">Pin.cpu.A8</span></code>
+- <code class="docutils literal notranslate"><span class="pre">Channel</span> <span class="pre">B</span></code> → <code class="docutils literal notranslate"><span class="pre">Pin.cpu.A9</span></code></p>
+</section>
+<section id="line-sensor-connections">
+<h3>Line Sensor Connections<a class="headerlink" href="#line-sensor-connections" title="Link to this heading">¶</a></h3>
+<p>The 5-channel line sensor is connected to:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Pin.cpu.A2</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Pin.cpu.A3</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Pin.cpu.A4</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Pin.cpu.A5</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Pin.cpu.B0</span></code></p></li>
+</ul>
+</section>
+<section id="bumper-sensor-connections">
+<h3>Bumper Sensor Connections<a class="headerlink" href="#bumper-sensor-connections" title="Link to this heading">¶</a></h3>
+<p>The bumper board is connected to:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">BMP0</span></code> → <code class="docutils literal notranslate"><span class="pre">Pin.cpu.B2</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BMP1</span></code> → <code class="docutils literal notranslate"><span class="pre">Pin.cpu.B1</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BMP2</span></code> → <code class="docutils literal notranslate"><span class="pre">Pin.cpu.C4</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="timer-configuration">
+<h2>Timer Configuration<a class="headerlink" href="#timer-configuration" title="Link to this heading">¶</a></h2>
+<p>The timer configuration in software is used to support PWM motor control and quadrature encoder reading. The main timers are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Timer(3,</span> <span class="pre">freq=20000)</span></code> for motor PWM</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Timer(2,</span> <span class="pre">prescaler=0,</span> <span class="pre">period=0xFFFF)</span></code> for the left encoder</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Timer(1,</span> <span class="pre">prescaler=0,</span> <span class="pre">period=0xFFFF)</span></code> for the right encoder</p></li>
+</ul>
+<p>This setup allows the motors and encoders to operate reliably with sufficient resolution for both velocity control and position tracking.</p>
+</section>
+<section id="code-implementation">
+<h2>Code Implementation<a class="headerlink" href="#code-implementation" title="Link to this heading">¶</a></h2>
+<p>The following code shows the hardware initialization used in the project:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ============================================================</span>
+<span class="c1"># HARDWARE</span>
+<span class="c1"># ============================================================</span>
+<span class="n">pwm_tim</span>  <span class="o">=</span> <span class="n">Timer</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="mi">20000</span><span class="p">)</span>
+<span class="n">encL_tim</span> <span class="o">=</span> <span class="n">Timer</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">prescaler</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mh">0xFFFF</span><span class="p">)</span>
+<span class="n">encR_tim</span> <span class="o">=</span> <span class="n">Timer</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">prescaler</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mh">0xFFFF</span><span class="p">)</span>
+
+<span class="n">leftMotor</span>  <span class="o">=</span> <span class="n">motor_driver</span><span class="p">(</span><span class="n">PWM_pin</span><span class="o">=</span><span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">A6</span><span class="p">,</span> <span class="n">DIR_pin</span><span class="o">=</span><span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">B5</span><span class="p">,</span> <span class="n">nSLP_pin</span><span class="o">=</span><span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">B6</span><span class="p">,</span> <span class="n">tim</span><span class="o">=</span><span class="n">pwm_tim</span><span class="p">,</span> <span class="n">chan</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">rightMotor</span> <span class="o">=</span> <span class="n">motor_driver</span><span class="p">(</span><span class="n">PWM_pin</span><span class="o">=</span><span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">A7</span><span class="p">,</span> <span class="n">DIR_pin</span><span class="o">=</span><span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">B3</span><span class="p">,</span> <span class="n">nSLP_pin</span><span class="o">=</span><span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">B4</span><span class="p">,</span> <span class="n">tim</span><span class="o">=</span><span class="n">pwm_tim</span><span class="p">,</span> <span class="n">chan</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">leftMotor</span><span class="o">.</span><span class="n">enable</span><span class="p">();</span>  <span class="n">rightMotor</span><span class="o">.</span><span class="n">enable</span><span class="p">()</span>
+<span class="n">leftMotor</span><span class="o">.</span><span class="n">set_effort</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span> <span class="n">rightMotor</span><span class="o">.</span><span class="n">set_effort</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="n">leftEncoder</span>  <span class="o">=</span> <span class="n">encoder</span><span class="p">(</span><span class="n">encL_tim</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">A1</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">A0</span><span class="p">)</span>
+<span class="n">rightEncoder</span> <span class="o">=</span> <span class="n">encoder</span><span class="p">(</span><span class="n">encR_tim</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">A8</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">A9</span><span class="p">)</span>
+
+<span class="c1"># ============================================================</span>
+<span class="c1"># LINE SENSOR</span>
+<span class="c1"># ============================================================</span>
+<span class="n">sensor_pins</span> <span class="o">=</span> <span class="p">(</span><span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">A2</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">A3</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">A4</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">A5</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">B0</span><span class="p">)</span>
+<span class="n">line</span> <span class="o">=</span> <span class="n">LineSensorArray</span><span class="p">(</span><span class="n">sensor_pins</span><span class="p">,</span> <span class="n">oversample</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+
+<span class="c1"># ============================================================</span>
+<span class="c1"># BUMPER</span>
+<span class="c1"># ============================================================</span>
+<span class="n">bump0</span> <span class="o">=</span> <span class="n">Pin</span><span class="p">(</span><span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">B2</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">Pin</span><span class="o">.</span><span class="n">IN</span><span class="p">,</span> <span class="n">pull</span><span class="o">=</span><span class="n">Pin</span><span class="o">.</span><span class="n">PULL_UP</span><span class="p">)</span>
+<span class="n">bump1</span> <span class="o">=</span> <span class="n">Pin</span><span class="p">(</span><span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">B1</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">Pin</span><span class="o">.</span><span class="n">IN</span><span class="p">,</span> <span class="n">pull</span><span class="o">=</span><span class="n">Pin</span><span class="o">.</span><span class="n">PULL_UP</span><span class="p">)</span>
+<span class="n">bump2</span> <span class="o">=</span> <span class="n">Pin</span><span class="p">(</span><span class="n">Pin</span><span class="o">.</span><span class="n">cpu</span><span class="o">.</span><span class="n">C4</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">Pin</span><span class="o">.</span><span class="n">IN</span><span class="p">,</span> <span class="n">pull</span><span class="o">=</span><span class="n">Pin</span><span class="o">.</span><span class="n">PULL_UP</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="wiring-diagram">
+<h2>Wiring Diagram<a class="headerlink" href="#wiring-diagram" title="Link to this heading">¶</a></h2>
+<a class="reference internal image-reference" href="_images/Wiring_Diagram.png"><img alt="_images/Wiring_Diagram.png" class="align-center" src="_images/Wiring_Diagram.png" style="width: 650px;" />
+</a>
+<p>The wiring diagram shows the connections between the Nucleo board, motor drivers, encoders, line sensor, and bumper sensors. This layout was used to keep the system organized and to make debugging easier during testing.</p>
+</section>
+<section id="key-components">
+<h2>Key Components<a class="headerlink" href="#key-components" title="Link to this heading">¶</a></h2>
+<p>The main electrical components used in Robert include:</p>
+<ul class="simple">
+<li><p>Nucleo L476RG microcontroller</p></li>
+<li><p>Modified Shoe of Brian</p></li>
+<li><p>Two DC motors with encoders</p></li>
+<li><p>Pololu QTR 5-channel analog reflectance sensor</p></li>
+<li><p>Romi bumper switch kit</p></li>
+<li><p>BNO055 IMU breakout board</p></li>
+<li><p>Motor driver interface</p></li>
+<li><p>Rechargeable battery pack</p></li>
+</ul>
+</section>
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Link to this heading">¶</a></h2>
+<p>Overall, the electrical design of Robert combines a relatively simple sensor and actuator layout with sufficient feedback for closed-loop control and autonomous operation. The system provides the robot with the ability to follow the line, detect contact events, measure wheel motion, and execute both continuous and hard-coded behaviors throughout the course.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Term Project - 0x04: Robert Time Trials and Final Deliverables</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Project Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="software.html">Software Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mechanical.html">Mechanical Design</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Electrical Design</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#wiring-overview">Wiring Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#timer-configuration">Timer Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#code-implementation">Code Implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#wiring-diagram">Wiring Diagram</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#key-components">Key Components</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#summary">Summary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="calandtest.html">Calibration and Testing Procedure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="results.html">Course Performance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="discussion.html">Discussion of What Worked and What Did Not</a></li>
+<li class="toctree-l1"><a class="reference internal" href="conclusion.html">Conclusion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="github.html">GitHub Repository</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="mechanical.html" title="previous chapter">Mechanical Design</a></li>
+      <li>Next: <a href="calandtest.html" title="next chapter">Calibration and Testing Procedure</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Maddy Reedy and Maddie Howard.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/electrical.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

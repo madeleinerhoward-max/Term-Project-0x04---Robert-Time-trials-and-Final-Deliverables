@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+
+<html lang="Python" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Software Design &#8212; Term Project - 0x04: Robert Time Trials and Final Deliverables 03/20/26 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=1480bb4b"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Mechanical Design" href="mechanical.html" />
+    <link rel="prev" title="Project Overview" href="overview.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="software-design">
+<h1>Software Design<a class="headerlink" href="#software-design" title="Link to this heading">¶</a></h1>
+<p>The software of Robert is organized using cooperative multitasking implemented with a priority-based scheduler. Each major subsystem is divided into individual tasks, including line following, course execution, button input handling, and a user interface for debugging and testing. These tasks each run at different periods and priorities and communicate through shared variables. Control flags within the code allow the system to transition between continuous line-following behavior and hard-coded driving sequences.</p>
+<p>In our code, we use the shared flag <code class="docutils literal notranslate"><span class="pre">course_phase</span></code> to coordinate behavior between the line-following and course tasks. While the course task has its own finite state machine (FSM) for hard-coded driving sequences such as the garage and cup tasks, <code class="docutils literal notranslate"><span class="pre">course_phase</span></code> indicates which section of the course is currently active.</p>
+<p>The phases are defined as follows:</p>
+<ul class="simple">
+<li><p><strong>Phase 0</strong> – Initial line following between checkpoint 0 and checkpoint 1</p></li>
+<li><p><strong>Phase 1 / 10</strong> – Garage sequence (hard-coded FSM)</p></li>
+<li><p><strong>Phase 2</strong> – Curvy track line-following with modified control</p></li>
+<li><p><strong>Phase 3</strong> – Cup interaction sequence</p></li>
+<li><p><strong>Phase 4</strong> – Final line-following to the end of the course</p></li>
+</ul>
+<p>When the second button press starts the run, <code class="docutils literal notranslate"><span class="pre">course_phase</span></code> is set to 0 and line-following begins. When the encoder count reaches the predefined value for checkpoint 1, the line-following task stops the motors, disables itself, and updates <code class="docutils literal notranslate"><span class="pre">course_phase</span></code> to the garage sequence. At this point, the course task exits its idle state and begins executing its FSM.</p>
+<p>After completing the garage sequence, the system transitions to Phase 2, where line-following is re-enabled. In this section, the robot operates on a curvier track, so a slower velocity and reduced proportional gain (Kp) are used. Additionally, if the line is lost, the robot steers toward the last known line direction rather than behaving as it did on the initial straight section.</p>
+<p>Phase 3 is triggered during line-following when the bumper sensor is activated. At this point, the line-following task disables itself and hands control to the course task, which executes the cup FSM. After the cup sequence is completed, the system transitions to Phase 4, where line-following is re-enabled and the robot finishes the course.</p>
+<p>As described above, tasks communicate through shared variables and controlled handoffs between line-following and course tasks. The IMU is initialized and available in the system but is only used for position and heading data during debugging and testing through the user interface. It does not directly affect control during autonomous operation.</p>
+<section id="high-level-task-diagram">
+<h2>High-Level Task Diagram<a class="headerlink" href="#high-level-task-diagram" title="Link to this heading">¶</a></h2>
+<a class="reference internal image-reference" href="_images/High_Level_Task_Diagram.png"><img alt="_images/High_Level_Task_Diagram.png" class="align-center" src="_images/High_Level_Task_Diagram.png" style="width: 600px;" />
+</a>
+<p>The button task operates as a finite state machine with an idle state and three states corresponding to button presses. The behavior is as follows:</p>
+<ul class="simple">
+<li><p>First press → initiates sensor calibration</p></li>
+<li><p>Second press → enables motors and begins autonomous operation</p></li>
+<li><p>Third press → stops the robot and resets all system flags</p></li>
+</ul>
+</section>
+<section id="button-fsm">
+<h2>Button FSM<a class="headerlink" href="#button-fsm" title="Link to this heading">¶</a></h2>
+<a class="reference internal image-reference" href="_images/Button_FSM.png"><img alt="_images/Button_FSM.png" class="align-center" src="_images/Button_FSM.png" style="width: 500px;" />
+</a>
+<p>The garage sequence FSM is responsible for executing the garage entry and exit sequence using encoder-based positioning and bumper feedback. Each state corresponds to a specific motion, such as turning, alignment, or driving a fixed distance. Transitions occur when encoder thresholds are reached or when bump sensors are triggered.</p>
+</section>
+<section id="garage-fsm">
+<h2>Garage FSM<a class="headerlink" href="#garage-fsm" title="Link to this heading">¶</a></h2>
+<a class="reference internal image-reference" href="_images/Course_Garage_FSM.png"><img alt="_images/Course_Garage_FSM.png" class="align-center" src="_images/Course_Garage_FSM.png" style="width: 500px;" />
+</a>
+<p>The cup sequence FSM handles the interaction with the cup after a bumper trigger during line-following. This sequence uses timed and distance-based movements to navigate around and push the cup out of the designated area.</p>
+</section>
+<section id="cup-fsm">
+<h2>Cup FSM<a class="headerlink" href="#cup-fsm" title="Link to this heading">¶</a></h2>
+<a class="reference internal image-reference" href="_images/Course_Cup_FSM.png"><img alt="_images/Course_Cup_FSM.png" class="align-center" src="_images/Course_Cup_FSM.png" style="width: 500px;" />
+</a>
+<p>The line-following behavior is not implemented as a strict FSM, but it can be modeled similarly.</p>
+</section>
+<section id="line-following-logic">
+<h2>Line Following Logic<a class="headerlink" href="#line-following-logic" title="Link to this heading">¶</a></h2>
+<a class="reference internal image-reference" href="_images/Line_Following_FSM.png"><img alt="_images/Line_Following_FSM.png" class="align-center" src="_images/Line_Following_FSM.png" style="width: 500px;" />
+</a>
+<p>The user task FSM is used for debugging, calibration, testing, and parameter tuning.</p>
+</section>
+<section id="user-task-fsm">
+<h2>User Task FSM<a class="headerlink" href="#user-task-fsm" title="Link to this heading">¶</a></h2>
+<a class="reference internal image-reference" href="_images/User_Interface_FSM.png"><img alt="_images/User_Interface_FSM.png" class="align-center" src="_images/User_Interface_FSM.png" style="width: 500px;" />
+</a>
+<p>Finally, the motor task controls both motors using closed-loop velocity control with encoder feedback and PI control.</p>
+</section>
+<section id="motor-task-fsm">
+<h2>Motor Task FSM<a class="headerlink" href="#motor-task-fsm" title="Link to this heading">¶</a></h2>
+<a class="reference internal image-reference" href="_images/Motor_FSM.png"><img alt="_images/Motor_FSM.png" class="align-center" src="_images/Motor_FSM.png" style="width: 500px;" />
+</a>
+<p>Overall, the software architecture combines cooperative multitasking, shared-variable communication, and FSM-based control to enable reliable and repeatable robot behavior.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Term Project - 0x04: Robert Time Trials and Final Deliverables</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Project Overview</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Software Design</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#high-level-task-diagram">High-Level Task Diagram</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#button-fsm">Button FSM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#garage-fsm">Garage FSM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cup-fsm">Cup FSM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#line-following-logic">Line Following Logic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#user-task-fsm">User Task FSM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#motor-task-fsm">Motor Task FSM</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="mechanical.html">Mechanical Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="electrical.html">Electrical Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="calandtest.html">Calibration and Testing Procedure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="results.html">Course Performance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="discussion.html">Discussion of What Worked and What Did Not</a></li>
+<li class="toctree-l1"><a class="reference internal" href="conclusion.html">Conclusion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="github.html">GitHub Repository</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="overview.html" title="previous chapter">Project Overview</a></li>
+      <li>Next: <a href="mechanical.html" title="next chapter">Mechanical Design</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Maddy Reedy and Maddie Howard.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/software.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
